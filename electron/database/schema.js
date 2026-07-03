@@ -1,4 +1,5 @@
 function initializeSchema(db) {
+  // Create all tables
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -8,6 +9,7 @@ function initializeSchema(db) {
       role TEXT NOT NULL CHECK(role IN ('admin','staff')),
       is_active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_at TEXT DEFAULT (datetime('now','localtime')),
       last_login TEXT
     );
 
@@ -128,28 +130,53 @@ function initializeSchema(db) {
       FOREIGN KEY(transaction_id) REFERENCES transactions(id),
       FOREIGN KEY(uploaded_by) REFERENCES users(id)
     );
-
-    CREATE INDEX IF NOT EXISTS idx_transactions_customer ON transactions(customer_id);
-    CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(transaction_date);
-    CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(transaction_type);
-    CREATE INDEX IF NOT EXISTS idx_deliveries_customer ON deliveries(customer_id);
-    CREATE INDEX IF NOT EXISTS idx_deliveries_date ON deliveries(delivery_date);
-    CREATE INDEX IF NOT EXISTS idx_deliveries_employee ON deliveries(employee_id);
-    CREATE INDEX IF NOT EXISTS idx_payments_customer ON payments(customer_id);
-    CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);
-    CREATE INDEX IF NOT EXISTS idx_documents_customer ON documents(customer_id);
-    CREATE INDEX IF NOT EXISTS idx_documents_transaction ON documents(transaction_id);
-    CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id);
-    CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(customer_name);
   `)
 
-  // Seed default admin if no users exist
+  // ── Safe migrations — add missing columns to existing databases ──────────────
+  // This runs every startup and is completely safe (IF NOT EXISTS equivalent for columns)
+  const migrations = [
+    { table: 'users',    column: 'updated_at', def: `TEXT DEFAULT (datetime('now','localtime'))` },
+    { table: 'users',    column: 'last_login',  def: `TEXT` },
+  ]
+
+  for (const m of migrations) {
+    try {
+      // Check if column already exists
+      const cols = db.prepare(`PRAGMA table_info(${m.table})`).all()
+      const exists = cols.some(c => c.name === m.column)
+      if (!exists) {
+        db.prepare(`ALTER TABLE ${m.table} ADD COLUMN ${m.column} ${m.def}`).run()
+        console.log(`[schema] Added column ${m.table}.${m.column}`)
+      }
+    } catch (e) {
+      console.warn(`[schema] Migration skipped: ${m.table}.${m.column} —`, e.message)
+    }
+  }
+
+  // ── Indexes ───────────────────────────────────────────────────────────────────
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_transactions_customer ON transactions(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_transactions_date     ON transactions(transaction_date);
+    CREATE INDEX IF NOT EXISTS idx_transactions_type     ON transactions(transaction_type);
+    CREATE INDEX IF NOT EXISTS idx_deliveries_customer   ON deliveries(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_deliveries_date       ON deliveries(delivery_date);
+    CREATE INDEX IF NOT EXISTS idx_deliveries_employee   ON deliveries(employee_id);
+    CREATE INDEX IF NOT EXISTS idx_payments_customer     ON payments(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_payments_date         ON payments(payment_date);
+    CREATE INDEX IF NOT EXISTS idx_documents_customer    ON documents(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_documents_transaction ON documents(transaction_id);
+    CREATE INDEX IF NOT EXISTS idx_activity_log_user     ON activity_log(user_id);
+    CREATE INDEX IF NOT EXISTS idx_customers_name        ON customers(customer_name);
+  `)
+
+  // ── Seed default admin if no users exist ─────────────────────────────────────
   const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get()
   if (userCount.c === 0) {
     const bcrypt = require('bcryptjs')
     const hash = bcrypt.hashSync('admin123', 10)
     db.prepare(`INSERT INTO users (username, password_hash, full_name, role)
       VALUES ('admin', ?, 'Administrator', 'admin')`).run(hash)
+    console.log('[schema] Default admin user created')
   }
 }
 

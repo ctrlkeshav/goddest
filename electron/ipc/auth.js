@@ -57,8 +57,8 @@ function registerHandlers(ipcMain, db) {
 
   ipcMain.handle('auth:update-user', (_, data) => {
     try {
-      db.prepare(`UPDATE users SET full_name = ?, role = ?, is_active = ?, updated_at = datetime('now','localtime')
-        WHERE id = ?`).run(data.full_name, data.role, data.is_active, data.id)
+      db.prepare(`UPDATE users SET full_name = ?, role = ?, is_active = ? WHERE id = ?`)
+        .run(data.full_name, data.role, data.is_active, data.id)
       return { success: true }
     } catch (e) {
       return { success: false, error: e.message }
