@@ -43,21 +43,43 @@
   "build": {
     "appId": "com.goddestmetals.app",
     "productName": "Goddest Metals",
+    "copyright": "Copyright © 2024 Goddest Metals Company",
     "directories": {
       "output": "dist-electron"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "public/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+        "to": "sql-wasm.wasm"
+      }
     ],
     "win": {
-      "target": "nsis",
-      "icon": "public/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "public/logo02.png",
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "public/logo02.png",
+      "uninstallerIcon": "public/logo02.png",
+      "installerHeaderIcon": "public/logo02.png",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Goddest Metals",
+      "runAfterFinish": true
+    },
+    "publish": null
   }
 }

@@ -33,19 +33,33 @@ Database.initialize = async function () {
   const initSqlJs = require('sql.js')
 
   // Find the WASM binary that ships alongside sql.js
-  const sqlJsDir  = path.dirname(require.resolve('sql.js'))
-  const wasmCandidates = [
-    path.join(sqlJsDir, 'sql-wasm.wasm'),
-    path.join(sqlJsDir, '..', 'dist', 'sql-wasm.wasm'),
-    path.join(sqlJsDir, 'dist',       'sql-wasm.wasm'),
-  ]
+  // In dev: it's inside node_modules/sql.js/dist/
+  // In packaged EXE: electron-builder copies it to process.resourcesPath
+  const { app } = require('electron')
+  const isPackaged = app && app.isPackaged
+
   let wasmPath = null
-  for (const c of wasmCandidates) {
-    if (fs.existsSync(c)) { wasmPath = c; break }
+
+  if (isPackaged) {
+    // Packaged EXE — extraResources puts it at resources/sql-wasm.wasm
+    wasmPath = path.join(process.resourcesPath, 'sql-wasm.wasm')
+  } else {
+    // Development — look inside node_modules
+    const sqlJsDir = path.dirname(require.resolve('sql.js'))
+    const candidates = [
+      path.join(sqlJsDir, 'sql-wasm.wasm'),
+      path.join(sqlJsDir, 'dist', 'sql-wasm.wasm'),
+      path.join(sqlJsDir, '..', 'dist', 'sql-wasm.wasm'),
+    ]
+    for (const c of candidates) {
+      if (fs.existsSync(c)) { wasmPath = c; break }
+    }
   }
-  if (!wasmPath) {
+
+  if (!wasmPath || !fs.existsSync(wasmPath)) {
     throw new Error(
-      'sql.js WASM file not found. Searched:\n' + wasmCandidates.join('\n')
+      `sql.js WASM file not found.\nLooked at: ${wasmPath}\n` +
+      `Run "npm install" and make sure sql.js is installed.`
     )
   }
 
