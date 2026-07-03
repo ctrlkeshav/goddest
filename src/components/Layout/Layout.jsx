@@ -31,7 +31,9 @@ export default function Layout() {
       <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="logo">
-            <div className="logo-icon">⚗️</div>
+            <div className="logo-icon">
+              <img src="./logo02.png" alt="Goddest Metals" onError={e => { e.target.style.display='none'; e.target.parentNode.textContent='⚗️' }} />
+            </div>
             {!collapsed && (
               <div className="logo-text">
                 <span className="logo-name">Goddest Metals</span>

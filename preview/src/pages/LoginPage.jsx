@@ -33,11 +33,19 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 72, height: 72, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-            marginBottom: 16, boxShadow: '0 0 40px rgba(245,158,11,0.3)'
+            width: 80, height: 80, borderRadius: '50%',
+            background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05))',
+            marginBottom: 16,
+            boxShadow: '0 0 40px rgba(245,158,11,0.25)',
+            border: '2px solid rgba(245,158,11,0.3)',
+            overflow: 'hidden'
           }}>
-            <span style={{ fontSize: 32 }}>⚗️</span>
+            <img
+              src="./logo02.png"
+              alt="Goddest Metals"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+              onError={e => { e.target.style.display='none'; e.target.parentNode.textContent='⚗️' }}
+            />
           </div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>Goddest Metals</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Silver Transaction Management</p>
