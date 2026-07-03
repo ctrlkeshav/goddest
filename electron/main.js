@@ -1,14 +1,14 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
 const path = require('path')
-const fs = require('fs')
+const fs   = require('fs')
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
-// Data directory setup
-const userDataPath = app.getPath('userData')
-const dbPath = path.join(userDataPath, 'goddest_metals.db')
+// ── Data paths ────────────────────────────────────────────────────────────────
+const userDataPath  = app.getPath('userData')
+const dbPath        = path.join(userDataPath, 'goddest_metals.db')
 const documentsPath = path.join(userDataPath, 'documents')
-const backupPath = path.join(userDataPath, 'backups')
+const backupPath    = path.join(userDataPath, 'backups')
 
 ;[documentsPath, backupPath].forEach(p => {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true })
@@ -17,48 +17,42 @@ const backupPath = path.join(userDataPath, 'backups')
 let mainWindow
 let db
 
-// ── Safe database initialiser ─────────────────────────────────────────────────
-// If the DB is corrupt or schema is wrong, backs it up and creates a fresh one.
-function openDatabase() {
-  const Database = require('better-sqlite3')
-
-  const tryOpen = () => {
-    const instance = new Database(dbPath)
-    instance.pragma('journal_mode = WAL')
-    instance.pragma('foreign_keys = ON')
-    // Quick sanity check — will throw if file is corrupt
-    instance.prepare('SELECT 1').get()
-    return instance
-  }
+// ── Open database ─────────────────────────────────────────────────────────────
+function openDatabase () {
+  // Pure-JS SQLite wrapper — no native compilation, no version mismatch
+  const Database = require('./database/db-wrapper')
 
   try {
-    const instance = tryOpen()
+    const instance = new Database(dbPath)
     require('./database/schema').initializeSchema(instance)
+    // Save to disk right after schema init so the file is always up to date
+    instance.saveToDisk()
+    console.log('[db] Database ready:', dbPath)
     return instance
   } catch (err) {
     console.error('[db] Open/schema failed:', err.message)
-    // Back up the bad DB and start fresh
+
+    // Back up bad file and start fresh
     if (fs.existsSync(dbPath)) {
-      const stamp = Date.now()
-      const badPath = dbPath.replace('.db', `_bad_${stamp}.db`)
+      const badPath = dbPath.replace('.db', `_bad_${Date.now()}.db`)
       try { fs.renameSync(dbPath, badPath) } catch (_) {}
-      console.log('[db] Bad database backed up to', badPath)
+      console.log('[db] Bad database moved to', badPath)
     }
-    // Also remove WAL/SHM files
     ;[dbPath + '-wal', dbPath + '-shm'].forEach(f => {
       try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch (_) {}
     })
-    // Try again with fresh file
-    const fresh = new Database(dbPath)
-    fresh.pragma('journal_mode = WAL')
-    fresh.pragma('foreign_keys = ON')
+
+    const Database2 = require('./database/db-wrapper')
+    const fresh = new Database2(dbPath)
     require('./database/schema').initializeSchema(fresh)
-    console.log('[db] Fresh database created successfully')
+    fresh.saveToDisk()
+    console.log('[db] Fresh database created')
     return fresh
   }
 }
 
-function createWindow() {
+// ── Browser window ────────────────────────────────────────────────────────────
+function createWindow () {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -83,7 +77,6 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
-    // Only open DevTools if explicitly requested via env variable
     if (process.env.OPEN_DEVTOOLS === '1') {
       mainWindow.webContents.openDevTools()
     }
@@ -92,6 +85,7 @@ function createWindow() {
   }
 }
 
+// ── App ready ─────────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
   try {
     db = openDatabase()
@@ -107,17 +101,11 @@ app.whenReady().then(() => {
     require('./ipc/backup').registerHandlers(ipcMain, db, dbPath, documentsPath, backupPath)
     require('./ipc/dashboard').registerHandlers(ipcMain, db)
 
-    ipcMain.handle('app:get-paths', () => ({ userDataPath, documentsPath, backupPath, dbPath }))
+    ipcMain.handle('app:get-paths',     () => ({ userDataPath, documentsPath, backupPath, dbPath }))
     ipcMain.handle('app:open-external', (_, url) => shell.openExternal(url))
-    ipcMain.handle('dialog:open-file', async (_, options) => {
-      const result = await dialog.showOpenDialog(mainWindow, options)
-      return result
-    })
-    ipcMain.handle('dialog:save-file', async (_, options) => {
-      const result = await dialog.showSaveDialog(mainWindow, options)
-      return result
-    })
-    ipcMain.handle('shell:open-path', (_, p) => shell.openPath(p))
+    ipcMain.handle('shell:open-path',   (_, p)   => shell.openPath(p))
+    ipcMain.handle('dialog:open-file',  async (_, opts) => dialog.showOpenDialog(mainWindow, opts))
+    ipcMain.handle('dialog:save-file',  async (_, opts) => dialog.showSaveDialog(mainWindow, opts))
 
     createWindow()
   } catch (err) {
@@ -125,6 +113,11 @@ app.whenReady().then(() => {
     dialog.showErrorBox('Startup Error', err.message)
     app.quit()
   }
+})
+
+// Flush DB to disk before quitting
+app.on('before-quit', () => {
+  try { if (db) db.saveToDisk() } catch (_) {}
 })
 
 app.on('window-all-closed', () => {
