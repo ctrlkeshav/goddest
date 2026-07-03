@@ -17,35 +17,38 @@ const backupPath    = path.join(userDataPath, 'backups')
 let mainWindow
 let db
 
-// ── Open database ─────────────────────────────────────────────────────────────
-function openDatabase () {
-  // Pure-JS SQLite wrapper — no native compilation, no version mismatch
+// ── Open database after sql.js WASM is loaded ─────────────────────────────────
+async function openDatabase () {
   const Database = require('./database/db-wrapper')
 
-  try {
+  // Initialize sql.js WASM asynchronously — MUST be awaited once
+  await Database.initialize()
+
+  const tryOpen = () => {
     const instance = new Database(dbPath)
     require('./database/schema').initializeSchema(instance)
-    // Save to disk right after schema init so the file is always up to date
     instance.saveToDisk()
-    console.log('[db] Database ready:', dbPath)
+    return instance
+  }
+
+  try {
+    const instance = tryOpen()
+    console.log('[db] Ready:', dbPath)
     return instance
   } catch (err) {
-    console.error('[db] Open/schema failed:', err.message)
+    console.error('[db] Open failed:', err.message, '— starting fresh')
 
-    // Back up bad file and start fresh
+    // Back up corrupt file, then create a clean database
     if (fs.existsSync(dbPath)) {
-      const badPath = dbPath.replace('.db', `_bad_${Date.now()}.db`)
-      try { fs.renameSync(dbPath, badPath) } catch (_) {}
-      console.log('[db] Bad database moved to', badPath)
+      try {
+        fs.renameSync(dbPath, dbPath.replace('.db', `_bad_${Date.now()}.db`))
+      } catch (_) {}
     }
     ;[dbPath + '-wal', dbPath + '-shm'].forEach(f => {
       try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch (_) {}
     })
 
-    const Database2 = require('./database/db-wrapper')
-    const fresh = new Database2(dbPath)
-    require('./database/schema').initializeSchema(fresh)
-    fresh.saveToDisk()
+    const fresh = tryOpen()
     console.log('[db] Fresh database created')
     return fresh
   }
@@ -85,11 +88,13 @@ function createWindow () {
   }
 }
 
-// ── App ready ─────────────────────────────────────────────────────────────────
-app.whenReady().then(() => {
+// ── App ready — fully async startup ──────────────────────────────────────────
+app.whenReady().then(async () => {
   try {
-    db = openDatabase()
+    // 1. Initialize sql.js WASM and open the database
+    db = await openDatabase()
 
+    // 2. Register all IPC handlers
     require('./ipc/auth').registerHandlers(ipcMain, db)
     require('./ipc/customers').registerHandlers(ipcMain, db)
     require('./ipc/transactions').registerHandlers(ipcMain, db)
@@ -107,10 +112,12 @@ app.whenReady().then(() => {
     ipcMain.handle('dialog:open-file',  async (_, opts) => dialog.showOpenDialog(mainWindow, opts))
     ipcMain.handle('dialog:save-file',  async (_, opts) => dialog.showSaveDialog(mainWindow, opts))
 
+    // 3. Create the window AFTER database is ready
     createWindow()
+
   } catch (err) {
     console.error('[main] Fatal startup error:', err)
-    dialog.showErrorBox('Startup Error', err.message)
+    dialog.showErrorBox('Startup Error', String(err.message || err))
     app.quit()
   }
 })
