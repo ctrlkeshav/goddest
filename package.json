@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
-    "build:electron": "vite build && electron-builder",
+    "build:electron": "vite build && electron-builder --win --x64",
+    "build:portable": "vite build && electron-builder --win portable --x64",
     "preview": "vite preview",
     "electron": "electron ."
   },
@@ -33,7 +34,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^8.2.2",
     "electron": "^30.0.0",
-    "electron-builder": "^24.13.2",
+    "electron-builder": "^25.1.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "vite": "^5.2.0",
@@ -62,23 +63,30 @@
     "win": {
       "target": [
         {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
           "target": "nsis",
           "arch": ["x64"]
         }
       ],
       "icon": "public/logo02.png",
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "signingHashAlgorithms": null,
+      "sign": null
+    },
+    "portable": {
+      "artifactName": "Goddest Metals ${version}.exe"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "public/logo02.png",
-      "uninstallerIcon": "public/logo02.png",
-      "installerHeaderIcon": "public/logo02.png",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Goddest Metals",
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "artifactName": "Goddest Metals Setup ${version}.exe"
     },
     "publish": null
   }
