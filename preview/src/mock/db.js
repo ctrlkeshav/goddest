@@ -301,6 +301,13 @@ export const transactions = {
     } else if (data.transaction_type === 'adjustment') {
       balance = data.balance_fine_silver || 0
     }
+    // Making charges
+    const mcRate   = parseFloat(data.making_charges) || 0
+    const mcType   = data.making_charges_type || 'fixed'
+    const mcAmount = mcType === 'per_gram'
+      ? parseFloat((mcRate * (parseFloat(data.gross_silver_given) || 0)).toFixed(2))
+      : mcRate
+
     db.transactions.push({
       id, transaction_id: txnId,
       transaction_date: data.transaction_date,
@@ -313,6 +320,8 @@ export const transactions = {
       wastage_percentage: data.wastage_percentage || 0,
       balance_fine_silver: data.balance_fine_silver !== undefined ? parseFloat(data.balance_fine_silver) : balance,
       payment_amount: data.payment_amount || 0,
+      making_charges: mcAmount,
+      making_charges_type: mcType,
       remarks: data.remarks || '',
       created_by: data.created_by || 1, created_at: now(), updated_at: now()
     })
@@ -356,7 +365,8 @@ export const transactions = {
     const total_received = txns.filter(t => t.transaction_type === 'fine_received').reduce((s, t) => s + (t.fine_silver_received || 0), 0)
     const total_recoverable = txns.filter(t => t.transaction_type === 'silver_issued').reduce((s, t) => s + (t.recoverable_fine_silver || 0), 0)
     const total_pending = total_recoverable - total_received
-    return ok({ total_issued, total_received, total_recoverable, total_pending, total_fine_back: total_received })
+    const total_making_charges = txns.reduce((s, t) => s + (t.making_charges || 0), 0)
+    return ok({ total_issued, total_received, total_recoverable, total_pending, total_fine_back: total_received, total_making_charges })
   }
 }
 

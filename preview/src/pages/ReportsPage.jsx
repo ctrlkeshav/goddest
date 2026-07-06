@@ -46,14 +46,14 @@ export default function ReportsPage() {
     if (!data) return
     let rows = []
     if (selected === 'pending_balance') rows = Array.isArray(data) ? data.map(r => ({ Customer: r.customer_name, Business: r.business_name, Mobile: r.mobile, City: r.city, 'Total Recoverable (g)': r.total_recoverable, 'Fine Received (g)': r.total_fine_received, 'Pending Fine (g)': r.pending_fine })) : []
-    else if (selected === 'silver_statement') rows = Array.isArray(data) ? data.map(r => ({ 'TXN ID': r.transaction_id, Date: r.transaction_date, Customer: r.customer_name, Type: txnTypeLabel(r.transaction_type), 'Gross Silver (g)': r.gross_silver_given, 'Fine Received (g)': r.fine_silver_received, 'Purity %': r.purity_percentage, 'Balance Fine (g)': r.balance_fine_silver, Remarks: r.remarks })) : []
+    else if (selected === 'silver_statement') rows = Array.isArray(data) ? data.map(r => ({ 'TXN ID': r.transaction_id, Date: r.transaction_date, Customer: r.customer_name, Type: txnTypeLabel(r.transaction_type), 'Gross Silver (g)': r.gross_silver_given, 'Fine Received (g)': r.fine_silver_received, 'Purity %': r.purity_percentage, 'Balance Fine (g)': r.balance_fine_silver, 'Making Charges (₹)': r.making_charges || 0, 'Charge Type': r.making_charges_type || 'fixed', Remarks: r.remarks })) : []
     else if (selected === 'payment_history') rows = Array.isArray(data) ? data.map(r => ({ Date: r.payment_date, Customer: r.customer_name, 'Amount (₹)': r.payment_amount, Method: paymentMethodLabel(r.payment_method), Reference: r.reference_number, Notes: r.notes })) : []
     else if (selected === 'delivery_report') rows = Array.isArray(data) ? data.map(r => ({ Date: r.delivery_date, City: r.destination_city, State: r.destination_state, Customer: r.customer_name, Employee: r.employee_name, Vehicle: r.vehicle_details, Purpose: r.purpose, 'Silver Delivered (g)': r.silver_weight_delivered, 'Fine Collected (g)': r.fine_silver_collected, 'Expenses (₹)': r.travel_expenses })) : []
-    else if (selected === 'customer_ledger' && data?.ledger) rows = data.ledger.map(r => ({ 'TXN ID': r.transaction_id, Date: r.transaction_date, Type: txnTypeLabel(r.transaction_type), 'Gross Silver (g)': r.gross_silver_given, 'Fine Received (g)': r.fine_silver_received, 'Balance Fine (g)': r.balance_fine_silver, 'Running Balance (g)': r.running_balance, Remarks: r.remarks }))
+    else if (selected === 'customer_ledger' && data?.ledger) rows = data.ledger.map(r => ({ 'TXN ID': r.transaction_id, Date: r.transaction_date, Type: txnTypeLabel(r.transaction_type), 'Gross Silver (g)': r.gross_silver_given, 'Fine Received (g)': r.fine_silver_received, 'Balance Fine (g)': r.balance_fine_silver, 'Running Balance (g)': r.running_balance, 'Making Charges (₹)': r.making_charges || 0, Remarks: r.remarks }))
 
     if (!rows.length) return toast.error('No data to export')
     const res = await window.api.exportToExcel({ type: selected, data: rows, filename: `${selected}_${Date.now()}.xlsx` })
-    if (res.success) toast.success(res.preview ? '📊 Excel export works in the desktop app' : `Exported to: ${res.path}`)
+    if (res.success) toast.success(`Exported to: ${res.path}`)
     else toast.error(res.error)
   }
 
@@ -62,7 +62,7 @@ export default function ReportsPage() {
     const rows = flattenData()
     if (!rows.length) return toast.error('No data to export')
     const res = await window.api.exportToCSV({ data: rows, filename: `${selected}_${Date.now()}.csv` })
-    if (res.success) toast.success(res.preview ? '📄 CSV export works in the desktop app' : `CSV saved: ${res.path}`)
+    if (res.success) toast.success(`CSV saved: ${res.path}`)
     else toast.error(res.error)
   }
 
@@ -129,7 +129,7 @@ export default function ReportsPage() {
 
     if ((selected === 'silver_statement') && Array.isArray(data)) return (
       <table className="data-table">
-        <thead><tr><th>TXN ID</th><th>Date</th><th>Customer</th><th>Type</th><th>Gross Silver</th><th>Fine Received</th><th>Purity</th><th>Balance Fine</th></tr></thead>
+        <thead><tr><th>TXN ID</th><th>Date</th><th>Customer</th><th>Type</th><th>Gross Silver</th><th>Fine Received</th><th>Purity</th><th>Balance Fine</th><th>Making Charges</th></tr></thead>
         <tbody>
           {data.map(t => (
             <tr key={t.id}>
@@ -141,6 +141,11 @@ export default function ReportsPage() {
               <td>{t.fine_silver_received ? fmtWeight(t.fine_silver_received) : '—'}</td>
               <td>{t.purity_percentage ? `${t.purity_percentage}%` : '—'}</td>
               <td style={{ fontWeight: 600, color: t.balance_fine_silver > 0 ? 'var(--danger)' : 'var(--success)' }}>{fmtWeight(t.balance_fine_silver)}</td>
+              <td>
+                {t.making_charges > 0
+                  ? <span style={{ color: 'var(--warning)', fontWeight: 600 }}>₹{parseFloat(t.making_charges).toLocaleString('en-IN')}</span>
+                  : '—'}
+              </td>
             </tr>
           ))}
         </tbody>

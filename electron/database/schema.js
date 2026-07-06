@@ -65,6 +65,8 @@ function initializeSchema (db) {
       wastage_percentage    REAL DEFAULT 0,
       balance_fine_silver   REAL DEFAULT 0,
       payment_amount        REAL DEFAULT 0,
+      making_charges        REAL DEFAULT 0,
+      making_charges_type   TEXT DEFAULT 'fixed',
       remarks               TEXT,
       created_by            INTEGER,
       created_at            TEXT DEFAULT (datetime('now','localtime')),
@@ -137,8 +139,10 @@ function initializeSchema (db) {
   // ── Safe column migrations ──────────────────────────────────────────────────
   // Adds columns that may be missing in databases created before this version.
   const migrations = [
-    { table: 'users', column: 'updated_at', def: `TEXT DEFAULT (datetime('now','localtime'))` },
-    { table: 'users', column: 'last_login',  def: `TEXT` },
+    { table: 'users',        column: 'updated_at',           def: `TEXT DEFAULT (datetime('now','localtime'))` },
+    { table: 'users',        column: 'last_login',           def: `TEXT` },
+    { table: 'transactions', column: 'making_charges',       def: `REAL DEFAULT 0` },
+    { table: 'transactions', column: 'making_charges_type',  def: `TEXT DEFAULT 'fixed'` },
   ]
 
   for (const m of migrations) {
