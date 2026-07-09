@@ -260,6 +260,7 @@ export default function AccountsPage() {
                             linkKey="account_id"
                             linkId={e.id}
                             userId={user?.id}
+                            label={`${e.entry_type.replace('_',' ').toUpperCase()} · ${e.entry_date}`}
                           />
                           <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(e)}>✏️</button>
                           <button className="btn btn-danger btn-sm btn-icon" onClick={() => setDelConfirm(e.id)}>🗑</button>

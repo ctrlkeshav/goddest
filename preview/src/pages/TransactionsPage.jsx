@@ -226,6 +226,7 @@ export default function TransactionsPage() {
                       linkKey="transaction_id"
                       linkId={t.id}
                       userId={user?.id}
+                      label={t.transaction_id}
                     />
                   </td>
                   <td>
