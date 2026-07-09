@@ -1,6 +1,7 @@
 {
   "name": "goddest-metals",
   "version": "1.0.0",
+  "author": "Goddest Metals Company",
   "description": "Professional Silver Transaction Management Software for Goddest Metals Company",
   "main": "electron/main.js",
   "homepage": "./",
@@ -83,7 +84,7 @@
     },
     "portable": {
       "artifactName": "Goddest Metals ${version}.exe",
-      "requestedExecutionLevel": "asInvoker"
+      "requestExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
