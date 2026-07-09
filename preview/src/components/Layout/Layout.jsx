@@ -80,6 +80,21 @@ export default function Layout() {
 
       <main className="main-content">
         <Outlet />
+        {/* Watermark */}
+        <div style={{
+          position: 'fixed',
+          bottom: 8,
+          right: 14,
+          fontSize: 11,
+          color: 'rgba(148,163,184,0.35)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          zIndex: 9999,
+          fontStyle: 'italic',
+          letterSpacing: '0.02em'
+        }}>
+          Keshav is watching...👀
+        </div>
       </main>
     </div>
   )
