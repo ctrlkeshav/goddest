@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { Bar, Line } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend } from 'chart.js'
+import RowDocuments from '../components/UI/RowDocuments'
 import Modal from '../components/UI/Modal'
 import ConfirmDialog from '../components/UI/ConfirmDialog'
 import SearchInput from '../components/UI/SearchInput'
@@ -255,6 +256,11 @@ export default function AccountsPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: 4 }}>
+                          <RowDocuments
+                            linkKey="account_id"
+                            linkId={e.id}
+                            userId={user?.id}
+                          />
                           <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(e)}>✏️</button>
                           <button className="btn btn-danger btn-sm btn-icon" onClick={() => setDelConfirm(e.id)}>🗑</button>
                         </div>

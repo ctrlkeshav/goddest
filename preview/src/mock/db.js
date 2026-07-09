@@ -574,7 +574,11 @@ export const documents = {
       const c = db.customers.find(c => c.id === d.customer_id)
       return { ...d, customer_name: c?.customer_name }
     })
-    if (filters.customerId) rows = rows.filter(d => d.customer_id === parseInt(filters.customerId))
+    if (filters.customerId)    rows = rows.filter(d => d.customer_id    === parseInt(filters.customerId))
+    if (filters.transactionId) rows = rows.filter(d => d.transaction_id === parseInt(filters.transactionId))
+    if (filters.accountId)     rows = rows.filter(d => d.account_id     === parseInt(filters.accountId))
+    if (filters.deliveryId)    rows = rows.filter(d => d.delivery_id    === parseInt(filters.deliveryId))
+    if (filters.paymentId)     rows = rows.filter(d => d.payment_id     === parseInt(filters.paymentId))
     if (filters.category) rows = rows.filter(d => d.document_category === filters.category)
     if (filters.search) {
       const s = filters.search.toLowerCase()

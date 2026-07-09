@@ -4,6 +4,7 @@ const { shell } = require('electron')
 const { v4: uuidv4 } = require('uuid')
 
 function registerHandlers(ipcMain, db, documentsPath) {
+  // Add account_id filter support
   ipcMain.handle('documents:get-all', (_, filters = {}) => {
     try {
       let query = `SELECT doc.*, c.customer_name, t.transaction_id as txn_ref
@@ -12,9 +13,12 @@ function registerHandlers(ipcMain, db, documentsPath) {
         LEFT JOIN transactions t ON doc.transaction_id = t.id
         WHERE 1=1`
       const params = []
-      if (filters.customerId) { query += ' AND doc.customer_id = ?'; params.push(filters.customerId) }
+      if (filters.customerId)    { query += ' AND doc.customer_id = ?';    params.push(filters.customerId) }
       if (filters.transactionId) { query += ' AND doc.transaction_id = ?'; params.push(filters.transactionId) }
-      if (filters.category) { query += ' AND doc.document_category = ?'; params.push(filters.category) }
+      if (filters.accountId)     { query += ' AND doc.account_id = ?';     params.push(filters.accountId) }
+      if (filters.deliveryId)    { query += ' AND doc.delivery_id = ?';    params.push(filters.deliveryId) }
+      if (filters.paymentId)     { query += ' AND doc.payment_id = ?';     params.push(filters.paymentId) }
+      if (filters.category)      { query += ' AND doc.document_category = ?'; params.push(filters.category) }
       if (filters.search) {
         query += ' AND (doc.document_name LIKE ? OR doc.original_filename LIKE ?)'
         const s = `%${filters.search}%`
@@ -42,14 +46,18 @@ function registerHandlers(ipcMain, db, documentsPath) {
 
       const result = db.prepare(`INSERT INTO documents
         (document_name, original_filename, stored_filename, file_type, file_size,
-        document_category, customer_id, transaction_id, delivery_id, payment_id, notes, uploaded_by)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+        document_category, customer_id, transaction_id, delivery_id, payment_id,
+        account_id, notes, uploaded_by)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
         data.document_name || data.original_filename,
         data.original_filename, storedName,
         ext.replace('.', '').toUpperCase(),
         stats.size, data.document_category,
-        data.customer_id || null, data.transaction_id || null,
-        data.delivery_id || null, data.payment_id || null,
+        data.customer_id    || null,
+        data.transaction_id || null,
+        data.delivery_id    || null,
+        data.payment_id     || null,
+        data.account_id     || null,
         data.notes, data.uploaded_by || null
       )
       return { success: true, id: result.lastInsertRowid }

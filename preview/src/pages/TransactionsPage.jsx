@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import Modal from '../components/UI/Modal'
 import ConfirmDialog from '../components/UI/ConfirmDialog'
 import SearchInput from '../components/UI/SearchInput'
+import RowDocuments from '../components/UI/RowDocuments'
 import { fmtDate, fmtWeight, fmtCurrency, txnTypeLabel, txnTypeBadge, today } from '../utils/format'
 import { useAuth } from '../context/AuthContext'
 
@@ -174,13 +175,14 @@ export default function TransactionsPage() {
                 <th>Balance Fine</th>
                 <th>Making Charges</th>
                 <th>Remarks</th>
+                <th>📎</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={12}><div className="loading">Loading…</div></td></tr>}
+              {loading && <tr><td colSpan={13}><div className="loading">Loading…</div></td></tr>}
               {!loading && txns.length === 0 && (
-                <tr><td colSpan={12}>
+                <tr><td colSpan={13}>
                   <div className="empty-state"><div className="icon">⚖️</div>No transactions found</div>
                 </td></tr>
               )}
@@ -218,6 +220,13 @@ export default function TransactionsPage() {
                   </td>
                   <td style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
                     {t.remarks || '—'}
+                  </td>
+                  <td>
+                    <RowDocuments
+                      linkKey="transaction_id"
+                      linkId={t.id}
+                      userId={user?.id}
+                    />
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 4 }}>

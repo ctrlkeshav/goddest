@@ -132,6 +132,7 @@ function initializeSchema(db) {
       transaction_id    INTEGER,
       delivery_id       INTEGER,
       payment_id        INTEGER,
+      account_id        INTEGER,
       notes             TEXT,
       uploaded_by       INTEGER,
       created_at        TEXT DEFAULT (datetime('now','localtime'))
@@ -173,6 +174,7 @@ function initializeSchema(db) {
     { table: 'transactions',      column: 'party_name',           def: `TEXT` },
     { table: 'employees',         column: 'user_id',              def: `INTEGER` },
     { table: 'payments',          column: 'party_name',           def: `TEXT` },
+    { table: 'documents',         column: 'account_id',           def: `INTEGER` },
   ]
 
   for (const m of migrations) {
