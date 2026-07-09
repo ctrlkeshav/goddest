@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+const isDev = !app.isPackaged
 
 // ── Data paths ────────────────────────────────────────────────────────────────
 const userDataPath  = app.getPath('userData')
@@ -17,11 +17,19 @@ const backupPath    = path.join(userDataPath, 'backups')
 let mainWindow
 let db
 
-// ── Open database after sql.js WASM is loaded ─────────────────────────────────
-async function openDatabase () {
-  const Database = require('./database/db-wrapper')
+// ── Resolve paths that differ between dev and packaged ───────────────────────
+function getAppPath(...parts) {
+  if (isDev) {
+    return path.join(__dirname, '..', ...parts)
+  }
+  // In packaged app, __dirname is inside resources/app/electron/
+  // app.getAppPath() gives resources/app
+  return path.join(app.getAppPath(), ...parts)
+}
 
-  // Initialize sql.js WASM asynchronously — MUST be awaited once
+// ── Open database ─────────────────────────────────────────────────────────────
+async function openDatabase() {
+  const Database = require('./database/db-wrapper')
   await Database.initialize()
 
   const tryOpen = () => {
@@ -32,30 +40,27 @@ async function openDatabase () {
   }
 
   try {
-    const instance = tryOpen()
-    console.log('[db] Ready:', dbPath)
-    return instance
+    return tryOpen()
   } catch (err) {
     console.error('[db] Open failed:', err.message, '— starting fresh')
-
-    // Back up corrupt file, then create a clean database
     if (fs.existsSync(dbPath)) {
-      try {
-        fs.renameSync(dbPath, dbPath.replace('.db', `_bad_${Date.now()}.db`))
-      } catch (_) {}
+      try { fs.renameSync(dbPath, dbPath.replace('.db', `_bad_${Date.now()}.db`)) } catch (_) {}
     }
-    ;[dbPath + '-wal', dbPath + '-shm'].forEach(f => {
-      try { if (fs.existsSync(f)) fs.unlinkSync(f) } catch (_) {}
-    })
-
-    const fresh = tryOpen()
-    console.log('[db] Fresh database created')
-    return fresh
+    return tryOpen()
   }
 }
 
 // ── Browser window ────────────────────────────────────────────────────────────
-function createWindow () {
+function createWindow() {
+  // Resolve icon path safely — don't crash if icon is missing
+  let iconPath
+  try {
+    const candidate = getAppPath('public', 'logo02.png')
+    iconPath = fs.existsSync(candidate) ? candidate : undefined
+  } catch (_) {
+    iconPath = undefined
+  }
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -68,11 +73,12 @@ function createWindow () {
       symbolColor: '#94a3b8',
       height: 38
     },
-    icon: path.join(__dirname, '../public/logo02.png'),
+    ...(iconPath ? { icon: iconPath } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: false
     },
     show: false
   })
@@ -85,17 +91,30 @@ function createWindow () {
       mainWindow.webContents.openDevTools()
     }
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    // In packaged app, index.html is in resources/app/dist/
+    const indexPath = path.join(app.getAppPath(), 'dist', 'index.html')
+    console.log('[window] Loading:', indexPath)
+    mainWindow.loadFile(indexPath).catch(err => {
+      console.error('[window] loadFile failed:', err.message)
+      dialog.showErrorBox('Load Error', `Could not load app UI:\n${indexPath}\n\n${err.message}`)
+      app.quit()
+    })
+    // Open DevTools in packaged app if there's a crash — remove after stable
+    mainWindow.webContents.on('did-fail-load', (event, code, desc, url) => {
+      console.error('[window] did-fail-load:', code, desc, url)
+      if (!mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.openDevTools()
+      }
+    })
   }
 }
 
-// ── App ready — fully async startup ──────────────────────────────────────────
+// ── App ready ─────────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   try {
-    // 1. Initialize sql.js WASM and open the database
     db = await openDatabase()
+    console.log('[main] DB ready')
 
-    // 2. Register all IPC handlers
     require('./ipc/auth').registerHandlers(ipcMain, db)
     require('./ipc/customers').registerHandlers(ipcMain, db)
     require('./ipc/transactions').registerHandlers(ipcMain, db)
@@ -114,7 +133,7 @@ app.whenReady().then(async () => {
     ipcMain.handle('dialog:open-file',  async (_, opts) => dialog.showOpenDialog(mainWindow, opts))
     ipcMain.handle('dialog:save-file',  async (_, opts) => dialog.showSaveDialog(mainWindow, opts))
 
-    // 3. Create the window AFTER database is ready
+    console.log('[main] IPC handlers registered, creating window')
     createWindow()
 
   } catch (err) {
@@ -124,7 +143,6 @@ app.whenReady().then(async () => {
   }
 })
 
-// Flush DB to disk before quitting
 app.on('before-quit', () => {
   try { if (db) db.saveToDisk() } catch (_) {}
 })

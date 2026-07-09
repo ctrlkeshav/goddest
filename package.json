@@ -45,14 +45,19 @@
     "appId": "com.goddestmetals.app",
     "productName": "Goddest Metals",
     "copyright": "Copyright © 2024 Goddest Metals Company",
+    "asar": true,
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "public"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
       "node_modules/**/*",
-      "public/**/*"
+      "public/**/*",
+      "!node_modules/.cache/**/*",
+      "!node_modules/.bin/**/*",
+      "!**/*.map"
     ],
     "extraResources": [
       {
@@ -77,7 +82,8 @@
       "sign": null
     },
     "portable": {
-      "artifactName": "Goddest Metals ${version}.exe"
+      "artifactName": "Goddest Metals ${version}.exe",
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,

@@ -4,6 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  // Critical: use relative paths so packaged Electron can find assets
   base: './',
   resolve: {
     alias: {
@@ -12,11 +13,15 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    emptyOutDir: true,
+    // Don't externalize anything — bundle everything for Electron
     rollupOptions: {
-      external: ['better-sqlite3', 'electron', 'archiver', 'extract-zip']
+      output: {
+        // Ensure assets use relative paths
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+      }
     }
-  },
-  server: {
-    port: 5173
   }
 })

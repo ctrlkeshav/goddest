@@ -13,23 +13,26 @@ where node >nul 2>&1
 if %errorlevel% neq 0 (
     color 0C
     echo  [ERROR] Node.js not found.
-    echo  Download from: https://nodejs.org  (choose LTS)
+    echo  Download from: https://nodejs.org  (choose LTS v20)
     pause & exit /b 1
 )
 for /f "tokens=*" %%v in ('node -v') do set NODE_VER=%%v
 echo  Node.js: %NODE_VER%
+echo.
 
 :: ── Move to project root ─────────────────────────────────────────────────────
 cd /d "%~dp0"
+echo  Working directory: %CD%
+echo.
 
-:: ── Skip code signing (avoids the symlink/winCodeSign error) ─────────────────
+:: ── Disable code signing to avoid symlink errors ─────────────────────────────
 set CSC_IDENTITY_AUTO_DISCOVERY=false
 set WIN_CSC_LINK=
 set CSC_LINK=
 set ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true
+set DEBUG=electron-builder
 
-:: ── Install / update dependencies ────────────────────────────────────────────
-echo.
+:: ── Install dependencies ──────────────────────────────────────────────────────
 echo  [1/3] Installing dependencies...
 call npm install
 if %errorlevel% neq 0 (
@@ -37,39 +40,57 @@ if %errorlevel% neq 0 (
     echo  [ERROR] npm install failed.
     pause & exit /b 1
 )
-echo  [1/3] Dependencies ready.
 
-:: ── Build React frontend ─────────────────────────────────────────────────────
+:: Verify sql.js WASM file exists (required for packaged app)
+if not exist "node_modules\sql.js\dist\sql-wasm.wasm" (
+    color 0C
+    echo  [ERROR] sql-wasm.wasm not found in node_modules.
+    echo  Run: npm install sql.js
+    pause & exit /b 1
+)
+echo  [1/3] Dependencies OK. WASM file found.
 echo.
-echo  [2/3] Building React UI...
+
+:: ── Build React UI ────────────────────────────────────────────────────────────
+echo  [2/3] Building React UI (Vite)...
 call npx vite build
 if %errorlevel% neq 0 (
     color 0C
     echo  [ERROR] Vite build failed.
     pause & exit /b 1
 )
-echo  [2/3] React UI built.
 
-:: ── Package EXE ──────────────────────────────────────────────────────────────
-echo.
-echo  [3/3] Packaging into EXE (this takes 3-8 mins)...
+:: Verify dist was created
+if not exist "dist\index.html" (
+    color 0C
+    echo  [ERROR] dist\index.html not found after Vite build.
+    pause & exit /b 1
+)
+echo  [2/3] React UI built. dist\index.html confirmed.
 echo.
 
-:: Try portable first (simpler, no NSIS symlink issues)
+:: ── Package as portable EXE ───────────────────────────────────────────────────
+echo  [3/3] Packaging into portable EXE...
+echo  (This downloads Electron binaries on first run — may take 5-10 mins)
+echo.
+
 call npx electron-builder --win portable --x64 --publish=never
 if %errorlevel% equ 0 goto :success
 
-:: If portable failed, try nsis
 echo.
-echo  Portable build failed, trying NSIS installer...
+color 0E
+echo  Portable build had issues. Trying NSIS installer instead...
+color 0A
 call npx electron-builder --win nsis --x64 --publish=never
 if %errorlevel% neq 0 (
     color 0C
     echo.
-    echo  [ERROR] Build failed. See errors above.
+    echo  [ERROR] Build failed.
     echo.
-    echo  Try running this script as Administrator:
-    echo  Right-click BUILD_EXE.bat ^> Run as administrator
+    echo  Common fixes:
+    echo    1. Run as Administrator (right-click ^> Run as admin)
+    echo    2. Enable Developer Mode: Settings ^> System ^> For Developers
+    echo    3. Delete dist-electron\ folder and try again
     echo.
     pause & exit /b 1
 )
@@ -80,16 +101,16 @@ color 0A
 echo  ============================================================
 echo   BUILD COMPLETE!
 echo.
-echo   Your EXE is in the  dist-electron\  folder.
+echo   Output folder:  dist-electron\
 echo.
-echo   PORTABLE: Goddest Metals 1.0.0.exe
-echo      ^> Single file, no install needed. Copy and run anywhere.
+echo   Files created:
+dir /b "%~dp0dist-electron\*.exe" 2>nul
 echo.
-echo   INSTALLER: Goddest Metals Setup 1.0.0.exe  (if built)
-echo      ^> Installs with desktop shortcut.
+echo   HOW TO USE:
+echo   - Portable .exe: Copy anywhere and double-click to run
+echo   - Setup .exe: Install it like any Windows program
 echo  ============================================================
 echo.
 
-:: Open the output folder
 start "" "%~dp0dist-electron"
 pause
