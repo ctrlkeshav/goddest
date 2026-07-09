@@ -7,7 +7,8 @@ import { fmtDate, fmtWeight, fmtCurrency, txnTypeLabel, txnTypeBadge, today } fr
 import { useAuth } from '../context/AuthContext'
 
 const EMPTY = {
-  transaction_date: today(), customer_id: '', transaction_type: 'silver_issued',
+  transaction_date: today(), customer_id: '', party_name: '',
+  transaction_type: 'silver_issued',
   gross_silver_given: '', fine_silver_received: '', purity_percentage: '',
   wastage_percentage: '', balance_fine_silver: '', payment_amount: '',
   making_charges: '', making_charges_type: 'fixed', remarks: ''
@@ -73,7 +74,8 @@ export default function TransactionsPage() {
   const openEdit = (t) => {
     setForm({
       transaction_date:    t.transaction_date,
-      customer_id:         t.customer_id,
+      customer_id:         t.customer_id || '',
+      party_name:          t.party_name || '',
       transaction_type:    t.transaction_type,
       gross_silver_given:  t.gross_silver_given  || '',
       fine_silver_received: t.fine_silver_received || '',
@@ -90,7 +92,7 @@ export default function TransactionsPage() {
   }
 
   const handleSave = async () => {
-    if (!form.customer_id)    return toast.error('Select a customer')
+    if (!form.customer_id && !form.party_name?.trim()) return toast.error('Select a customer or enter a party name')
     if (!form.transaction_date) return toast.error('Date is required')
     const payload = { ...form, created_by: user?.id }
     const res = editing
@@ -262,18 +264,28 @@ export default function TransactionsPage() {
             </div>
           </div>
 
-          {/* Customer */}
-          <div className="form-group">
-            <label className="form-label">Customer *</label>
-            <select className="select" value={form.customer_id}
-              onChange={e => set('customer_id', e.target.value)}>
-              <option value="">— Select Customer —</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.customer_name}{c.business_name ? ` (${c.business_name})` : ''}
-                </option>
-              ))}
-            </select>
+          {/* Customer / Party */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="form-group">
+              <label className="form-label">Customer (registered)</label>
+              <select className="select" value={form.customer_id}
+                onChange={e => { set('customer_id', e.target.value); if (e.target.value) set('party_name', '') }}>
+                <option value="">— Walk-in / Unregistered Party —</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.customer_name}{c.business_name ? ` (${c.business_name})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {!form.customer_id && (
+              <div className="form-group">
+                <label className="form-label">Party / Person Name * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(required if no customer selected)</span></label>
+                <input className="input" value={form.party_name}
+                  onChange={e => set('party_name', e.target.value)}
+                  placeholder="e.g. Ramesh Kumar, Local Merchant…" />
+              </div>
+            )}
           </div>
 
           {/* Silver Issued fields */}

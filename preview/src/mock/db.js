@@ -47,12 +47,14 @@ function err(msg) { return { success: false, error: msg } }
 function freshDB() {
   const db = {
     users: [], customers: [], transactions: [], employees: [],
-    deliveries: [], payments: [], documents: [], activity_log: []
+    deliveries: [], payments: [], documents: [], activity_log: [],
+    general_accounts: []
   }
-  // default admin — password: admin123
+  // default admin — password: nimda321
   db.users.push({
-    id: 1, username: 'admin', password_hash: 'ADMIN123_HASH',
+    id: 1, username: 'admin', password_hash: 'ADMIN_HASH',
     full_name: 'Administrator', role: 'admin', is_active: 1,
+    can_add_transaction: 1, can_edit_record: 1, employee_id: null,
     created_at: now(), last_login: null
   })
   // seed demo customers
@@ -132,8 +134,7 @@ export const auth = {
     const db = load()
     const user = db.users.find(u => u.username === username && u.is_active)
     if (!user) return err('Invalid credentials')
-    // simple hash check for preview — real app uses bcrypt
-    const valid = (user.password_hash === 'ADMIN123_HASH' && password === 'admin123')
+    const valid = (user.password_hash === 'ADMIN_HASH' && password === 'nimda321')
       || bcrypt.compare(password, user.password_hash)
     if (!valid) return err('Invalid credentials')
     user.last_login = now()
@@ -145,7 +146,7 @@ export const auth = {
     const db = load()
     const user = db.users.find(u => u.id === userId)
     if (!user) return err('User not found')
-    const valid = (user.password_hash === 'ADMIN123_HASH' && oldPassword === 'admin123')
+    const valid = (user.password_hash === 'ADMIN_HASH' && oldPassword === 'nimda321')
       || bcrypt.compare(oldPassword, user.password_hash)
     if (!valid) return err('Current password is incorrect')
     user.password_hash = bcrypt.hash(newPassword)
@@ -778,5 +779,86 @@ export const backup = {
   list() {
     const backups = JSON.parse(localStorage.getItem('gm_backups') || '[]')
     return ok(backups)
+  }
+}
+
+
+// ── GENERAL ACCOUNTS ──────────────────────────────────────────────────────────
+
+export const accounts = {
+  getAll(filters = {}) {
+    const db = load()
+    let rows = db.general_accounts || []
+    if (filters.type)   rows = rows.filter(r => r.entry_type === filters.type)
+    if (filters.from)   rows = rows.filter(r => r.entry_date >= filters.from)
+    if (filters.to)     rows = rows.filter(r => r.entry_date <= filters.to)
+    if (filters.search) {
+      const s = filters.search.toLowerCase()
+      rows = rows.filter(r =>
+        r.party_name?.toLowerCase().includes(s) ||
+        r.description?.toLowerCase().includes(s) ||
+        r.category?.toLowerCase().includes(s) ||
+        r.reference_number?.toLowerCase().includes(s)
+      )
+    }
+    rows = [...rows].sort((a, b) => b.entry_date.localeCompare(a.entry_date) || b.id - a.id)
+    if (filters.limit) rows = rows.slice(0, parseInt(filters.limit))
+    return ok(rows)
+  },
+  getOne(id) {
+    const db = load()
+    return ok((db.general_accounts || []).find(r => r.id === id))
+  },
+  create(data) {
+    const db = load()
+    if (!db.general_accounts) db.general_accounts = []
+    const id = db.general_accounts.length ? Math.max(...db.general_accounts.map(r => r.id)) + 1 : 1
+    db.general_accounts.push({ id, ...data, created_at: now(), updated_at: now() })
+    save(db); return ok(id)
+  },
+  update(data) {
+    const db = load()
+    if (!db.general_accounts) db.general_accounts = []
+    const idx = db.general_accounts.findIndex(r => r.id === data.id)
+    if (idx >= 0) db.general_accounts[idx] = { ...db.general_accounts[idx], ...data, updated_at: now() }
+    save(db); return ok(true)
+  },
+  delete(id) {
+    const db = load()
+    db.general_accounts = (db.general_accounts || []).filter(r => r.id !== id)
+    save(db); return ok(true)
+  },
+  getSummary(filters = {}) {
+    const db = load()
+    let rows = db.general_accounts || []
+    if (filters.from) rows = rows.filter(r => r.entry_date >= filters.from)
+    if (filters.to)   rows = rows.filter(r => r.entry_date <= filters.to)
+    const sum = (type) => rows.filter(r => r.entry_type === type).reduce((s, r) => s + (r.amount || 0), 0)
+    const sumW = (type) => rows.filter(r => r.entry_type === type).reduce((s, r) => s + (r.silver_weight || 0), 0)
+    const total_income = sum('income'), total_expense = sum('expense')
+    const total_silver_purchase = sum('silver_purchase'), total_silver_sale = sum('silver_sale')
+    const total_bank_deposit = sum('bank_deposit'), total_bank_withdrawal = sum('bank_withdrawal')
+    const net_cashflow = (total_income + total_silver_sale + total_bank_withdrawal)
+                       - (total_expense + total_silver_purchase + total_bank_deposit)
+    return ok({
+      total_income, total_expense, total_silver_purchase, total_silver_sale,
+      total_bank_deposit, total_bank_withdrawal,
+      total_silver_bought_g: sumW('silver_purchase'), total_silver_sold_g: sumW('silver_sale'),
+      net_cashflow
+    })
+  },
+  getMonthly() {
+    const db = load()
+    const rows = db.general_accounts || []
+    const map = {}
+    rows.forEach(r => {
+      const m = r.entry_date?.slice(0, 7); if (!m) return
+      if (!map[m]) map[m] = { month: m, income: 0, expense: 0, silver_purchase: 0, silver_sale: 0 }
+      if (r.entry_type === 'income')          map[m].income          += r.amount || 0
+      if (r.entry_type === 'expense')         map[m].expense         += r.amount || 0
+      if (r.entry_type === 'silver_purchase') map[m].silver_purchase += r.amount || 0
+      if (r.entry_type === 'silver_sale')     map[m].silver_sale     += r.amount || 0
+    })
+    return ok(Object.values(map).sort((a, b) => a.month.localeCompare(b.month)).slice(-12))
   }
 }

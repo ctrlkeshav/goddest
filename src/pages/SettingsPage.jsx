@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const [activityLog, setActivityLog] = useState([])
   const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' })
   const [userModal, setUserModal] = useState(false)
-  const [newUser, setNewUser] = useState({ username: '', full_name: '', password: '', role: 'staff' })
+  const [newUser, setNewUser] = useState({ username: '', full_name: '', password: '', role: 'staff', can_add_transaction: true, can_edit_record: true })
   const [delConfirm, setDelConfirm] = useState(null)
   const [paths, setPaths] = useState(null)
 
@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const handleCreateUser = async () => {
     if (!newUser.username || !newUser.password || !newUser.full_name) return toast.error('Fill all required fields')
     const res = await window.api.createUser(newUser)
-    if (res.success) { toast.success('User created'); setUserModal(false); setNewUser({ username: '', full_name: '', password: '', role: 'staff' }); loadUsers() }
+    if (res.success) { toast.success('User created'); setUserModal(false); setNewUser({ username: '', full_name: '', password: '', role: 'staff', can_add_transaction: true, can_edit_record: true }); loadUsers() }
     else toast.error(res.error || 'Failed')
   }
 
@@ -137,13 +137,38 @@ export default function SettingsPage() {
               </div>
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Permissions</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
                   <tbody>
                     {users.map(u => (
                       <tr key={u.id}>
                         <td style={{ fontWeight: 600 }}>{u.full_name}</td>
                         <td><span className="font-mono text-sm">@{u.username}</span></td>
                         <td><span className={`badge ${u.role === 'admin' ? 'badge-amber' : 'badge-blue'}`}>{u.role}</span></td>
+                        <td>
+                          {u.role !== 'admin' && (
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <button
+                                className={`badge ${u.can_add_transaction ? 'badge-green' : 'badge-red'}`}
+                                style={{ border: 'none', cursor: 'pointer', fontSize: 10 }}
+                                onClick={async () => {
+                                  await window.api.updatePermissions({ userId: u.id, can_add_transaction: !u.can_add_transaction, can_edit_record: !!u.can_edit_record })
+                                  loadUsers()
+                                }}>
+                                {u.can_add_transaction ? '✓' : '✕'} Add TXN
+                              </button>
+                              <button
+                                className={`badge ${u.can_edit_record ? 'badge-green' : 'badge-red'}`}
+                                style={{ border: 'none', cursor: 'pointer', fontSize: 10 }}
+                                onClick={async () => {
+                                  await window.api.updatePermissions({ userId: u.id, can_add_transaction: !!u.can_add_transaction, can_edit_record: !u.can_edit_record })
+                                  loadUsers()
+                                }}>
+                                {u.can_edit_record ? '✓' : '✕'} Edit
+                              </button>
+                            </div>
+                          )}
+                          {u.role === 'admin' && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Full access</span>}
+                        </td>
                         <td><span className={`badge ${u.is_active ? 'badge-green' : 'badge-red'}`}>{u.is_active ? 'Active' : 'Inactive'}</span></td>
                         <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDateTime(u.last_login)}</td>
                         <td>
@@ -251,6 +276,19 @@ export default function SettingsPage() {
               <option value="admin">Admin</option>
             </select>
           </div>
+          {newUser.role === 'staff' && (
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>PERMISSIONS</p>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={newUser.can_add_transaction} onChange={e => setNewUser(p => ({ ...p, can_add_transaction: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} />
+                Can Add Transactions
+              </label>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={newUser.can_edit_record} onChange={e => setNewUser(p => ({ ...p, can_edit_record: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} />
+                Can Edit Records
+              </label>
+            </div>
+          )}
         </div>
       </Modal>
 

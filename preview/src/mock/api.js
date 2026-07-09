@@ -3,7 +3,7 @@
 
 import {
   auth, customers, transactions, employees,
-  deliveries, payments, documents, dashboard, reports, backup
+  deliveries, payments, documents, dashboard, reports, backup, accounts
 } from './db.js'
 
 function wrap(fn) {
@@ -39,14 +39,16 @@ window.api = {
   saveFileDialog: () => Promise.resolve({ canceled: true }),
 
   // Auth
-  login:           wrap((d) => auth.login(d)),
-  logout:          () => Promise.resolve(),
-  changePassword:  wrap((d) => auth.changePassword(d)),
-  getUsers:        wrap(()  => auth.getUsers()),
-  createUser:      wrap((d) => auth.createUser(d)),
-  updateUser:      wrap((d) => auth.updateUser(d)),
-  deleteUser:      wrap((id) => auth.deleteUser(id)),
-  getActivityLog:  wrap((f) => auth.getActivityLog(f)),
+  login:              wrap((d) => auth.login(d)),
+  logout:             () => Promise.resolve(),
+  changePassword:     wrap((d) => auth.changePassword(d)),
+  resetUserPassword:  wrap((d) => { const db = load(); const u = db.users.find(u => u.id === d.userId); if (u) { u.password_hash = bcrypt.hash(d.newPassword); save(db); } return { success: true } }),
+  getUsers:           wrap(()  => auth.getUsers()),
+  createUser:         wrap((d) => auth.createUser(d)),
+  updateUser:         wrap((d) => auth.updateUser(d)),
+  updatePermissions:  wrap((d) => { const db = load(); const u = db.users.find(u => u.id === d.userId); if (u) { u.can_add_transaction = d.can_add_transaction ? 1 : 0; u.can_edit_record = d.can_edit_record ? 1 : 0; save(db); } return { success: true } }),
+  deleteUser:         wrap((id) => auth.deleteUser(id)),
+  getActivityLog:     wrap((f) => auth.getActivityLog(f)),
 
   // Customers
   getCustomers:    wrap((f) => customers.getAll(f)),
@@ -73,12 +75,24 @@ window.api = {
   deleteDelivery:  wrap((id) => deliveries.delete(id)),
 
   // Employees
-  getEmployees:    wrap((f) => employees.getAll(f)),
-  getEmployee:     wrap((id) => employees.getOne(id)),
-  createEmployee:  wrap((d) => employees.create(d)),
-  updateEmployee:  wrap((d) => employees.update(d)),
-  deleteEmployee:  wrap((id) => employees.delete(id)),
-  getEmployeeStats: wrap((id) => employees.getStats(id)),
+  getEmployees:          wrap((f) => employees.getAll(f)),
+  getEmployee:           wrap((id) => employees.getOne(id)),
+  createEmployee:        wrap((d) => employees.create(d)),
+  updateEmployee:        wrap((d) => employees.update(d)),
+  deleteEmployee:        wrap((id) => employees.delete(id)),
+  getEmployeeStats:      wrap((id) => employees.getStats(id)),
+  assignEmployeeLogin:   wrap((d) => { return { success: true } }),
+  updateEmployeePerms:   wrap((d) => { return { success: true } }),
+  removeEmployeeLogin:   wrap((id) => { return { success: true } }),
+
+  // General Accounts
+  getAccounts:       wrap((f) => accounts.getAll(f)),
+  getAccount:        wrap((id) => accounts.getOne(id)),
+  createAccount:     wrap((d) => accounts.create(d)),
+  updateAccount:     wrap((d) => accounts.update(d)),
+  deleteAccount:     wrap((id) => accounts.delete(id)),
+  getAccountSummary: wrap((f) => accounts.getSummary(f)),
+  getAccountMonthly: wrap((f) => accounts.getMonthly(f)),
 
   // Payments
   getPayments:            wrap((f) => payments.getAll(f)),

@@ -4,16 +4,17 @@ import { useAuth } from '../../context/AuthContext'
 import './Layout.css'
 
 const NAV = [
-  { path: '/', icon: '⬛', label: 'Dashboard', exact: true },
-  { path: '/customers', icon: '👥', label: 'Customers' },
-  { path: '/transactions', icon: '⚖️', label: 'Transactions' },
-  { path: '/payments', icon: '💳', label: 'Payments' },
-  { path: '/deliveries', icon: '🚚', label: 'Deliveries' },
-  { path: '/employees', icon: '👤', label: 'Employees' },
-  { path: '/documents', icon: '📁', label: 'Documents' },
-  { path: '/reports', icon: '📊', label: 'Reports' },
-  { path: '/backup', icon: '💾', label: 'Backup' },
-  { path: '/settings', icon: '⚙️', label: 'Settings' },
+  { path: '/',            icon: '🏠', label: 'Dashboard',   exact: true },
+  { path: '/customers',   icon: '👥', label: 'Customers' },
+  { path: '/accounts',    icon: '📒', label: 'Accounts' },
+  { path: '/transactions',icon: '⚖️', label: 'Silver TXN' },
+  { path: '/payments',    icon: '💳', label: 'Payments' },
+  { path: '/deliveries',  icon: '🚚', label: 'Deliveries' },
+  { path: '/employees',   icon: '👤', label: 'Employees' },
+  { path: '/documents',   icon: '📁', label: 'Documents' },
+  { path: '/reports',     icon: '📊', label: 'Reports' },
+  { path: '/backup',      icon: '💾', label: 'Backup' },
+  { path: '/settings',    icon: '⚙️', label: 'Settings' },
 ]
 
 export default function Layout() {

@@ -1,91 +1,104 @@
 const { contextBridge, ipcRenderer } = require('electron')
-
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args)
 
 contextBridge.exposeInMainWorld('api', {
-  // App
-  getPaths: () => invoke('app:get-paths'),
-  openExternal: (url) => invoke('app:open-external', url),
-  openPath: (p) => invoke('shell:open-path', p),
-  openFileDialog: (options) => invoke('dialog:open-file', options),
-  saveFileDialog: (options) => invoke('dialog:save-file', options),
+  // ── App ────────────────────────────────────────────────────────────────────
+  getPaths:        ()       => invoke('app:get-paths'),
+  openExternal:    (url)    => invoke('app:open-external', url),
+  openPath:        (p)      => invoke('shell:open-path', p),
+  openFileDialog:  (opts)   => invoke('dialog:open-file', opts),
+  saveFileDialog:  (opts)   => invoke('dialog:save-file', opts),
 
-  // Auth
-  login: (data) => invoke('auth:login', data),
-  logout: () => invoke('auth:logout'),
-  changePassword: (data) => invoke('auth:change-password', data),
-  getUsers: () => invoke('auth:get-users'),
-  createUser: (data) => invoke('auth:create-user', data),
-  updateUser: (data) => invoke('auth:update-user', data),
-  deleteUser: (id) => invoke('auth:delete-user', id),
-  getActivityLog: (filters) => invoke('auth:get-activity-log', filters),
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  login:              (d)          => invoke('auth:login', d),
+  logout:             ()           => invoke('auth:logout'),
+  changePassword:     (d)          => invoke('auth:change-password', d),
+  resetUserPassword:  (d)          => invoke('auth:reset-user-password', d),
+  getUsers:           ()           => invoke('auth:get-users'),
+  createUser:         (d)          => invoke('auth:create-user', d),
+  updateUser:         (d)          => invoke('auth:update-user', d),
+  updatePermissions:  (d)          => invoke('auth:update-permissions', d),
+  deleteUser:         (id)         => invoke('auth:delete-user', id),
+  getActivityLog:     (f)          => invoke('auth:get-activity-log', f),
 
-  // Customers
-  getCustomers: (filters) => invoke('customers:get-all', filters),
-  getCustomer: (id) => invoke('customers:get-one', id),
-  createCustomer: (data) => invoke('customers:create', data),
-  updateCustomer: (data) => invoke('customers:update', data),
-  deleteCustomer: (id) => invoke('customers:delete', id),
-  searchCustomers: (q) => invoke('customers:search', q),
+  // ── Customers ──────────────────────────────────────────────────────────────
+  getCustomers:    (f)  => invoke('customers:get-all', f),
+  getCustomer:     (id) => invoke('customers:get-one', id),
+  createCustomer:  (d)  => invoke('customers:create', d),
+  updateCustomer:  (d)  => invoke('customers:update', d),
+  deleteCustomer:  (id) => invoke('customers:delete', id),
+  searchCustomers: (q)  => invoke('customers:search', q),
 
-  // Transactions
-  getTransactions: (filters) => invoke('transactions:get-all', filters),
-  getTransaction: (id) => invoke('transactions:get-one', id),
-  createTransaction: (data) => invoke('transactions:create', data),
-  updateTransaction: (data) => invoke('transactions:update', data),
-  deleteTransaction: (id) => invoke('transactions:delete', id),
-  getCustomerLedger: (customerId) => invoke('transactions:get-ledger', customerId),
-  getTransactionSummary: () => invoke('transactions:get-summary'),
+  // ── Transactions ───────────────────────────────────────────────────────────
+  getTransactions:       (f)  => invoke('transactions:get-all', f),
+  getTransaction:        (id) => invoke('transactions:get-one', id),
+  createTransaction:     (d)  => invoke('transactions:create', d),
+  updateTransaction:     (d)  => invoke('transactions:update', d),
+  deleteTransaction:     (id) => invoke('transactions:delete', id),
+  getCustomerLedger:     (id) => invoke('transactions:get-ledger', id),
+  getTransactionSummary: ()   => invoke('transactions:get-summary'),
 
-  // Deliveries
-  getDeliveries: (filters) => invoke('deliveries:get-all', filters),
-  getDelivery: (id) => invoke('deliveries:get-one', id),
-  createDelivery: (data) => invoke('deliveries:create', data),
-  updateDelivery: (data) => invoke('deliveries:update', data),
+  // ── Deliveries ─────────────────────────────────────────────────────────────
+  getDeliveries:  (f)  => invoke('deliveries:get-all', f),
+  getDelivery:    (id) => invoke('deliveries:get-one', id),
+  createDelivery: (d)  => invoke('deliveries:create', d),
+  updateDelivery: (d)  => invoke('deliveries:update', d),
   deleteDelivery: (id) => invoke('deliveries:delete', id),
 
-  // Employees
-  getEmployees: (filters) => invoke('employees:get-all', filters),
-  getEmployee: (id) => invoke('employees:get-one', id),
-  createEmployee: (data) => invoke('employees:create', data),
-  updateEmployee: (data) => invoke('employees:update', data),
-  deleteEmployee: (id) => invoke('employees:delete', id),
-  getEmployeeStats: (id) => invoke('employees:get-stats', id),
+  // ── Employees ──────────────────────────────────────────────────────────────
+  getEmployees:          (f)  => invoke('employees:get-all', f),
+  getEmployee:           (id) => invoke('employees:get-one', id),
+  createEmployee:        (d)  => invoke('employees:create', d),
+  updateEmployee:        (d)  => invoke('employees:update', d),
+  deleteEmployee:        (id) => invoke('employees:delete', id),
+  getEmployeeStats:      (id) => invoke('employees:get-stats', id),
+  assignEmployeeLogin:   (d)  => invoke('employees:assign-login', d),
+  updateEmployeePerms:   (d)  => invoke('employees:update-permissions', d),
+  removeEmployeeLogin:   (id) => invoke('employees:remove-login', id),
 
-  // Payments
-  getPayments: (filters) => invoke('payments:get-all', filters),
-  getPayment: (id) => invoke('payments:get-one', id),
-  createPayment: (data) => invoke('payments:create', data),
-  updatePayment: (data) => invoke('payments:update', data),
-  deletePayment: (id) => invoke('payments:delete', id),
-  getCustomerPaymentSummary: (customerId) => invoke('payments:get-customer-summary', customerId),
+  // ── Payments ───────────────────────────────────────────────────────────────
+  getPayments:               (f)  => invoke('payments:get-all', f),
+  getPayment:                (id) => invoke('payments:get-one', id),
+  createPayment:             (d)  => invoke('payments:create', d),
+  updatePayment:             (d)  => invoke('payments:update', d),
+  deletePayment:             (id) => invoke('payments:delete', id),
+  getCustomerPaymentSummary: (id) => invoke('payments:get-customer-summary', id),
 
-  // Documents
-  getDocuments: (filters) => invoke('documents:get-all', filters),
-  uploadDocument: (data) => invoke('documents:upload', data),
-  deleteDocument: (id) => invoke('documents:delete', id),
-  openDocument: (id) => invoke('documents:open', id),
-  downloadDocument: (id, dest) => invoke('documents:download', id, dest),
+  // ── Documents ──────────────────────────────────────────────────────────────
+  getDocuments:    (f)       => invoke('documents:get-all', f),
+  uploadDocument:  (d)       => invoke('documents:upload', d),
+  deleteDocument:  (id)      => invoke('documents:delete', id),
+  openDocument:    (id)      => invoke('documents:open', id),
+  downloadDocument:(id, dst) => invoke('documents:download', id, dst),
 
-  // Dashboard
-  getDashboardStats: () => invoke('dashboard:get-stats'),
-  getMonthlyMovement: () => invoke('dashboard:get-monthly-movement'),
-  getCustomerBalances: () => invoke('dashboard:get-customer-balances'),
-  getPaymentTrends: () => invoke('dashboard:get-payment-trends'),
-  getRecentTransactions: () => invoke('dashboard:get-recent-transactions'),
+  // ── General Accounts ───────────────────────────────────────────────────────
+  getAccounts:        (f) => invoke('accounts:get-all', f),
+  getAccount:         (id)=> invoke('accounts:get-one', id),
+  createAccount:      (d) => invoke('accounts:create', d),
+  updateAccount:      (d) => invoke('accounts:update', d),
+  deleteAccount:      (id)=> invoke('accounts:delete', id),
+  getAccountSummary:  (f) => invoke('accounts:get-summary', f),
+  getAccountMonthly:  (f) => invoke('accounts:get-monthly', f),
+
+  // ── Dashboard ──────────────────────────────────────────────────────────────
+  getDashboardStats:      () => invoke('dashboard:get-stats'),
+  getMonthlyMovement:     () => invoke('dashboard:get-monthly-movement'),
+  getCustomerBalances:    () => invoke('dashboard:get-customer-balances'),
+  getPaymentTrends:       () => invoke('dashboard:get-payment-trends'),
+  getRecentTransactions:  () => invoke('dashboard:get-recent-transactions'),
   getTopPendingCustomers: () => invoke('dashboard:get-top-pending'),
 
-  // Reports
-  generateCustomerLedger: (data) => invoke('reports:customer-ledger', data),
-  generateSilverStatement: (data) => invoke('reports:silver-statement', data),
-  generateDeliveryReport: (data) => invoke('reports:delivery-report', data),
-  generatePendingBalance: (data) => invoke('reports:pending-balance', data),
-  generatePaymentHistory: (data) => invoke('reports:payment-history', data),
-  exportToExcel: (data) => invoke('reports:export-excel', data),
-  exportToCSV: (data) => invoke('reports:export-csv', data),
+  // ── Reports ────────────────────────────────────────────────────────────────
+  generateCustomerLedger:  (d) => invoke('reports:customer-ledger', d),
+  generateSilverStatement: (d) => invoke('reports:silver-statement', d),
+  generateDeliveryReport:  (d) => invoke('reports:delivery-report', d),
+  generatePendingBalance:  (d) => invoke('reports:pending-balance', d),
+  generatePaymentHistory:  (d) => invoke('reports:payment-history', d),
+  exportToExcel:           (d) => invoke('reports:export-excel', d),
+  exportToCSV:             (d) => invoke('reports:export-csv', d),
 
-  // Backup
-  createBackup: () => invoke('backup:create'),
-  restoreBackup: (filePath) => invoke('backup:restore', filePath),
-  listBackups: () => invoke('backup:list'),
+  // ── Backup ─────────────────────────────────────────────────────────────────
+  createBackup:  ()    => invoke('backup:create'),
+  restoreBackup: (p)   => invoke('backup:restore', p),
+  listBackups:   ()    => invoke('backup:list'),
 })

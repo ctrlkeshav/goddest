@@ -22,9 +22,11 @@ function registerHandlers(ipcMain, db) {
 
   ipcMain.handle('transactions:get-all', (_, filters = {}) => {
     try {
-      let query = `SELECT t.*, c.customer_name, c.business_name
+      let query = `SELECT t.*,
+        COALESCE(c.customer_name, t.party_name, 'Walk-in') as customer_name,
+        c.business_name
         FROM transactions t
-        JOIN customers c ON t.customer_id = c.id
+        LEFT JOIN customers c ON t.customer_id = c.id
         WHERE 1=1`
       const params = []
       if (filters.customerId) { query += ' AND t.customer_id = ?';       params.push(filters.customerId) }
@@ -47,8 +49,10 @@ function registerHandlers(ipcMain, db) {
 
   ipcMain.handle('transactions:get-one', (_, id) => {
     try {
-      const data = db.prepare(`SELECT t.*, c.customer_name, c.business_name
-        FROM transactions t JOIN customers c ON t.customer_id = c.id
+      const data = db.prepare(`SELECT t.*,
+        COALESCE(c.customer_name, t.party_name, 'Walk-in') as customer_name,
+        c.business_name
+        FROM transactions t LEFT JOIN customers c ON t.customer_id = c.id
         WHERE t.id = ?`).get(id)
       return { success: true, data }
     } catch (e) {
@@ -59,10 +63,7 @@ function registerHandlers(ipcMain, db) {
   ipcMain.handle('transactions:create', (_, data) => {
     try {
       const txnId = generateTransactionId()
-
-      // Silver calculations
-      let recoverable = 0
-      let balance     = 0
+      let recoverable = 0, balance = 0
       if (data.transaction_type === 'silver_issued') {
         recoverable = (data.gross_silver_given || 0) * (data.purity_percentage || 0) / 100
         balance = recoverable
@@ -72,35 +73,26 @@ function registerHandlers(ipcMain, db) {
         balance = data.balance_fine_silver || 0
       }
       const wastage = data.wastage_percentage || 0
-      if (recoverable > 0 && wastage > 0) {
-        balance = recoverable * (1 - wastage / 100)
-      }
+      if (recoverable > 0 && wastage > 0) balance = recoverable * (1 - wastage / 100)
 
-      // Making charges
       const makingChargesAmount = calcMakingCharges(data)
       const makingChargesType   = data.making_charges_type || 'fixed'
 
       const result = db.prepare(`INSERT INTO transactions
-        (transaction_id, transaction_date, customer_id, transaction_type,
+        (transaction_id, transaction_date, customer_id, party_name, transaction_type,
          gross_silver_given, fine_silver_received, purity_percentage,
          recoverable_fine_silver, wastage_percentage, balance_fine_silver,
          payment_amount, making_charges, making_charges_type, remarks, created_by)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-        txnId,
-        data.transaction_date,
-        data.customer_id,
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+        txnId, data.transaction_date,
+        data.customer_id || null,
+        data.party_name || null,
         data.transaction_type,
-        data.gross_silver_given    || 0,
-        data.fine_silver_received  || 0,
-        data.purity_percentage     || 0,
-        recoverable,
-        wastage,
+        data.gross_silver_given || 0, data.fine_silver_received || 0,
+        data.purity_percentage || 0, recoverable, wastage,
         data.balance_fine_silver !== undefined ? parseFloat(data.balance_fine_silver) : balance,
-        data.payment_amount        || 0,
-        makingChargesAmount,
-        makingChargesType,
-        data.remarks,
-        data.created_by || null
+        data.payment_amount || 0, makingChargesAmount, makingChargesType,
+        data.remarks, data.created_by || null
       )
       return { success: true, id: result.lastInsertRowid, transaction_id: txnId }
     } catch (e) {

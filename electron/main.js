@@ -106,6 +106,7 @@ app.whenReady().then(async () => {
     require('./ipc/reports').registerHandlers(ipcMain, db)
     require('./ipc/backup').registerHandlers(ipcMain, db, dbPath, documentsPath, backupPath)
     require('./ipc/dashboard').registerHandlers(ipcMain, db)
+    require('./ipc/accounts').registerHandlers(ipcMain, db)
 
     ipcMain.handle('app:get-paths',     () => ({ userDataPath, documentsPath, backupPath, dbPath }))
     ipcMain.handle('app:open-external', (_, url) => shell.openExternal(url))

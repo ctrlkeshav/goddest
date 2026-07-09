@@ -15,6 +15,8 @@ import ReportsPage from './pages/ReportsPage'
 import BackupPage from './pages/BackupPage'
 import SettingsPage from './pages/SettingsPage'
 
+import AccountsPage from './pages/AccountsPage'
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="flex-center" style={{ height: '100vh', color: 'var(--text-muted)' }}>Loading…</div>
@@ -29,6 +31,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="customers" element={<CustomersPage />} />
+        <Route path="accounts"     element={<AccountsPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="deliveries" element={<DeliveriesPage />} />
         <Route path="employees" element={<EmployeesPage />} />
